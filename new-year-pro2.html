@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Protocol 2026: Time Portal</title>
+    
+    <!-- GSAP Core -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --neon-teal: #00f3ff;
+            --neon-blue: #0066ff;
+            --neon-purple: #bc13fe;
+            --dark-bg: #050505;
+            --glass: rgba(255, 255, 255, 0.05);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--dark-bg);
+            color: white;
+            font-family: 'Orbitron', sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            perspective: 1000px; /* Essential for 3D zoom */
+        }
+
+        /* CANVAS BACKGROUND */
+        #starfield {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            opacity: 0.6;
+        }
+
+        /* GRID FLOOR */
+        .grid-floor {
+            position: absolute;
+            bottom: -50%;
+            left: -50%;
+            width: 200%;
+            height: 100%;
+            background: 
+                linear-gradient(transparent 0%, var(--neon-blue) 100%), 
+                linear-gradient(90deg, rgba(0, 243, 255, 0.1) 1px, transparent 1px),
+                linear-gradient(rgba(0, 243, 255, 0.1) 1px, transparent 1px);
+            background-size: 100% 100%, 40px 40px, 40px 40px;
+            transform: rotateX(80deg);
+            z-index: 0;
+            mask-image: linear-gradient(to top, black 20%, transparent 80%);
+            -webkit-mask-image: linear-gradient(to top, black 20%, transparent 80%);
+            animation: gridMove 20s linear infinite;
+        }
+
+        @keyframes gridMove {
+            0% { transform: rotateX(80deg) translateY(0); }
+            100% { transform: rotateX(80deg) translateY(40px); }
+        }
+
+        /* MAIN UI CONTAINER */
+        #ui-layer {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transform-style: preserve-3d;
+        }
+
+        /* PORTAL ASSEMBLY */
+        .portal-wrapper {
+            position: relative;
+            width: 60vmin;
+            height: 60vmin;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transform-style: preserve-3d;
+        }
+
+        /* The SVG Ring */
+        .portal-ring-svg {
+            position: absolute;
+            width: 120%;
+            height: 120%;
+            fill: none;
+            stroke: var(--neon-teal);
+            stroke-width: 1;
+            overflow: visible;
+        }
+
+        .ring-outer {
+            stroke: var(--neon-blue);
+            stroke-dasharray: 100 50;
+            filter: drop-shadow(0 0 10px var(--neon-blue));
+            transform-origin: center;
+        }
+
+        .ring-inner {
+            stroke: var(--neon-purple);
+            stroke-width: 2;
+            stroke-dasharray: 20 10;
+            filter: drop-shadow(0 0 5px var(--neon-purple));
+            transform-origin: center;
+        }
+
+        /* The Void Center */
+        .portal-void {
+            position: absolute;
+            width: 80%;
+            height: 80%;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(0,0,0,1) 30%, rgba(0,243,255,0.1) 100%);
+            box-shadow: inset 0 0 50px rgba(0,0,0,0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            border: 1px solid rgba(0, 243, 255, 0.2);
+            backdrop-filter: blur(5px);
+        }
+
+        /* CONTENT INSIDE PORTAL */
+        .portal-content {
+            position: relative;
+            z-index: 20;
+            text-align: center;
+            width: 100%;
+        }
+
+        /* BUTTON */
+        .btn-enter {
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid var(--neon-teal);
+            color: var(--neon-teal);
+            padding: 1rem 2rem;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2rem;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.2);
+            clip-path: polygon(10% 0, 100% 0, 100% 70%, 90% 100%, 0 100%, 0 30%);
+        }
+
+        .btn-enter:hover {
+            background: var(--neon-teal);
+            color: black;
+            box-shadow: 0 0 30px var(--neon-teal);
+        }
+
+        .btn-enter::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            transition: 0.5s;
+        }
+
+        .btn-enter:hover::before {
+            left: 100%;
+        }
+
+        /* COUNTDOWN TEXT */
+        #countdown {
+            font-size: 8rem;
+            font-weight: 900;
+            color: white;
+            text-shadow: 0 0 20px var(--neon-purple), 0 0 40px var(--neon-blue);
+            opacity: 0;
+            display: none;
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        /* YEAR DISPLAY */
+        .year-container {
+            display: none; /* Hidden initially */
+            justify-content: center;
+            align-items: center;
+            font-size: 12vmin; /* Responsive font size */
+            font-weight: 900;
+            letter-spacing: 1vmin;
+            position: relative;
+        }
+
+        .digit-wrapper {
+            position: relative;
+            display: inline-block;
+            width: 0.8em; /* Fixed width to prevent shifting */
+            height: 1.2em;
+            text-align: center;
+        }
+
+        .digit {
+            display: inline-block;
+            background: linear-gradient(180deg, #fff, var(--neon-teal));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 10px var(--neon-teal));
+        }
+
+        /* The swapping digits need absolute positioning to overlap correctly */
+        #digit-5, #digit-6 {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+        }
+
+        #digit-6 {
+            opacity: 0;
+            transform: translateY(50px);
+            background: linear-gradient(180deg, #fff, var(--neon-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 15px var(--neon-purple));
+        }
+
+        /* FLASH & SHOCKWAVE */
+        #flash-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: white;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            mix-blend-mode: overlay;
+        }
+
+        #shockwave {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            width: 10vmin; height: 10vmin;
+            border-radius: 50%;
+            border: 20px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 0 50px white, inset 0 0 50px white;
+            z-index: 50;
+            pointer-events: none;
+        }
+
+        /* SCANLINES */
+        .scanlines {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.2));
+            background-size: 100% 4px;
+            z-index: 90;
+            pointer-events: none;
+            opacity: 0.3;
+        }
+        
+        /* Message below button */
+        .system-msg {
+            position: absolute;
+            bottom: -60px;
+            width: 100%;
+            font-size: 0.8rem;
+            color: var(--neon-blue);
+            opacity: 0.7;
+            font-family: 'Rajdhani', sans-serif;
+            letter-spacing: 2px;
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- Ambient Audio Context (Hidden) -->
+    <!-- We will use JS AudioContext to avoid external file issues -->
+
+    <canvas id="starfield"></canvas>
+    <div class="grid-floor"></div>
+    <div class="scanlines"></div>
+    <div id="flash-overlay"></div>
+    
+    <div id="ui-layer">
+        
+        <!-- Shockwave Effect -->
+        <div id="shockwave"></div>
+
+        <!-- Portal Structure -->
+        <div class="portal-wrapper" id="portal">
+            <!-- SVG Rotating Rings -->
+            <svg class="portal-ring-svg" viewBox="0 0 200 200">
+                <circle class="ring-outer" cx="100" cy="100" r="90" />
+                <circle class="ring-inner" cx="100" cy="100" r="80" />
+                <defs>
+                    <filter id="glow">
+                        <feGaussianBlur stdDeviation="3.5" result="coloredBlur"/>
+                        <feMerge>
+                            <feMergeNode in="coloredBlur"/>
+                            <feMergeNode in="SourceGraphic"/>
+                        </feMerge>
+                    </filter>
+                </defs>
+            </svg>
+
+            <!-- Center Void -->
+            <div class="portal-void">
+                <div class="portal-content">
+                    
+                    <button id="btn-enter" class="btn-enter">Unlock 2026</button>
+                    <div class="system-msg"></h1>Ready for Next Step</h1></div>
+
+                    <div id="countdown">5</div>
+                    
+                    <div class="year-container" id="year-display">
+                        <div class="digit-wrapper"><span class="digit">2</span></div>
+                        <div class="digit-wrapper"><span class="digit">0</span></div>
+                        <div class="digit-wrapper"><span class="digit">2</span></div>
+                        <div class="digit-wrapper">
+                            <span class="digit" id="digit-5">6</span>
+                            <span class="digit" id="digit-6">6</span>
+                        </div>
+                        <div class="system-msg">Happy New Year🤗😍🫵
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. AUDIO SYNTHESIZER ---
+        // Generates sci-fi sounds without external assets
+        const AudioSys = {
+            ctx: null,
+            init: function() {
+                window.AudioContext = window.AudioContext || window.webkitAudioContext;
+                this.ctx = new AudioContext();
+            },
+            playHum: function() {
+                if(!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(50, this.ctx.currentTime);
+                
+                // Filter for "muffled" space sound
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(200, this.ctx.currentTime);
+
+                gain.gain.setValueAtTime(0.05, this.ctx.currentTime);
+                
+                osc.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                
+                // Slight LFO modulation
+                const lfo = this.ctx.createOscillator();
+                lfo.frequency.value = 0.5;
+                const lfoGain = this.ctx.createGain();
+                lfoGain.gain.value = 50;
+                lfo.connect(lfoGain);
+                lfoGain.connect(filter.frequency);
+                lfo.start();
+            },
+            playClick: function() {
+                if(!this.ctx) this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(800, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(100, this.ctx.currentTime + 0.3);
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.3);
+            },
+            playBeep: function() {
+                if(!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(1200, this.ctx.currentTime);
+                gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.1);
+            },
+            playExplosion: function() {
+                if(!this.ctx) return;
+                // Create noise buffer
+                const bufferSize = this.ctx.sampleRate * 2; 
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+                
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(1000, this.ctx.currentTime);
+                filter.frequency.exponentialRampToValueAtTime(100, this.ctx.currentTime + 1.5);
+
+                const gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(0.5, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 1.5);
+
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.ctx.destination);
+                noise.start();
+            },
+            playPowerUp: function() {
+                if(!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(100, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(2000, this.ctx.currentTime + 5); // Rise over 5s
+                
+                gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.3, this.ctx.currentTime + 4);
+                gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 5);
+                
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 5);
+            }
+        };
+
+        // --- 2. CANVAS PARTICLES ---
+        const canvas = document.getElementById('starfield');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+        const particles = [];
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.z = Math.random() * 2; // depth
+                this.size = Math.random() * 1.5;
+                this.speedY = Math.random() * 0.5 + 0.1;
+                this.opacity = Math.random();
+            }
+            update() {
+                this.y -= this.speedY; // Move Up
+                if (this.y < 0) this.y = height;
+            }
+            draw() {
+                ctx.fillStyle = `rgba(0, 243, 255, ${this.opacity})`;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        for (let i = 0; i < 150; i++) particles.push(new Particle());
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, width, height);
+            particles.forEach(p => {
+                p.update();
+                p.draw();
+            });
+            requestAnimationFrame(animateParticles);
+        }
+        animateParticles();
+
+
+        // --- 3. GSAP ANIMATIONS ---
+
+        // Elements
+        const btnEnter = document.getElementById('btn-enter');
+        const portal = document.getElementById('portal');
+        const ringOuter = document.querySelector('.ring-outer');
+        const ringInner = document.querySelector('.ring-inner');
+        const countdownEl = document.getElementById('countdown');
+        const yearDisplay = document.getElementById('year-display');
+        const flashOverlay = document.getElementById('flash-overlay');
+        const shockwave = document.getElementById('shockwave');
+        const sysMsg = document.querySelector('.system-msg');
+
+        // Initial Ambient Rotation
+        gsap.to(ringOuter, { rotation: 360, duration: 20, repeat: -1, ease: "none", transformOrigin: "center" });
+        gsap.to(ringInner, { rotation: -360, duration: 15, repeat: -1, ease: "none", transformOrigin: "center" });
+
+        // Hover Effect on Portal
+        gsap.to('.portal-void', {
+            boxShadow: "inset 0 0 80px rgba(0, 243, 255, 0.3)",
+            duration: 2,
+            yoyo: true,
+            repeat: -1
+        });
+
+        // --- SEQUENCE TRIGGER ---
+        btnEnter.addEventListener('click', () => {
+            
+            // Init Audio Context (must be user triggered)
+            AudioSys.init();
+            AudioSys.playClick();
+            AudioSys.playHum();
+            AudioSys.playPowerUp();
+
+            const tl = gsap.timeline();
+
+            // 1. Hide Button
+            tl.to([btnEnter, sysMsg], {
+                opacity: 0,
+                duration: 0.5,
+                display: 'none'
+            });
+
+            // 2. Zoom / Portal Expansion
+            tl.to(portal, {
+                scale: 1.5,
+                duration: 2,
+                ease: "power2.inOut"
+            }, "<");
+
+            // 3. Intensify Portal Glow
+            tl.to('.portal-ring-svg', {
+                filter: "drop-shadow(0 0 20px var(--neon-teal))",
+                duration: 2
+            }, "<");
+
+            // 4. Countdown Sequence (5 seconds)
+            tl.set(countdownEl, { display: 'block', opacity: 1 });
+            
+            for (let i = 5; i > 0; i--) {
+                tl.call(() => {
+                    countdownEl.innerText = i;
+                    AudioSys.playBeep();
+                    // Pulse animation for number
+                    gsap.fromTo(countdownEl, 
+                        { scale: 1.5, opacity: 0 },
+                        { scale: 1, opacity: 1, duration: 0.5, ease: "back.out" }
+                    );
+                });
+                tl.to({}, { duration: 1 }); // Wait 1 second
+            }
+
+            // 5. THE EXPLOSION & REVEAL (Transition to 2025)
+            tl.call(() => {
+                countdownEl.style.display = 'none';
+                AudioSys.playExplosion();
+            });
+
+            // Shockwave expand
+            tl.to(shockwave, {
+                scale: 15,
+                opacity: 0,
+                duration: 0.8,
+                ease: "power4.out"
+            }, "reveal");
+
+            // Flash White
+            tl.to(flashOverlay, {
+                opacity: 1,
+                duration: 0.1,
+                ease: "power4.in"
+            }, "reveal");
+            
+            tl.to(flashOverlay, {
+                opacity: 0,
+                duration: 1.5,
+                ease: "power2.out"
+            });
+
+            // Show 2025
+            tl.set(yearDisplay, { display: 'flex' }, "reveal+=0.1");
+            tl.from(yearDisplay, {
+                scale: 0.5,
+                opacity: 0,
+                duration: 1,
+                ease: "elastic.out(1, 0.5)"
+            }, "reveal+=0.2");
+
+            // 6. THE DIGIT TRANSFORMATION (2025 -> 2026)
+            // Wait a beat after 2025 appears
+            tl.addLabel("transformStart", "+=1");
+
+            // Animate "5" Out
+            tl.to("#digit-5", {
+                y: -100, // Move Up
+                opacity: 0,
+                filter: "blur(10px)",
+                duration: 1.5,
+                ease: "power2.in"
+            }, "transformStart");
+
+            // Glitch effect on container during swap
+            tl.to(".year-container", {
+                x: 5,
+                duration: 0.1,
+                repeat: 5,
+                yoyo: true,
+                ease: "rough"
+            }, "transformStart+=0.5");
+
+            // Animate "6" In (Strictly after 5 starts leaving, but overlapping slightly for smoothness)
+            tl.call(() => AudioSys.playClick(), null, "transformStart+=1.4"); // Sound for locking in
+            
+            tl.to("#digit-6", {
+                y: 0,
+                opacity: 1,
+                duration: 1.5,
+                ease: "elastic.out(1, 0.6)",
+                onStart: () => {
+                    // Create a mini flash specifically for the digit
+                    gsap.to("#digit-6", { textShadow: "0 0 50px white", duration: 0.2, yoyo: true, repeat: 1 });
+                }
+            }, "transformStart+=1.4"); // Starts when 5 is almost gone
+
+            // Final Polish: Scale up everything slightly to celebrate
+            tl.to("#year-display", {
+                scale: 1.2,
+                textShadow: "0 0 30px var(--neon-purple), 0 0 60px var(--neon-blue)",
+                duration: 2
+            });
+
+        });
+
+    </script>
+</body>
+</html>
